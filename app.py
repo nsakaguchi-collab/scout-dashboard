@@ -4,7 +4,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="企業別 スカウトCVR分析ダッシュボード", layout="wide")
 
-# カスタムCSS（フォント・カード・丸バッジデザイン）
+# カスタムCSS（フォント・カード・丸バッジ・CVR色分け用クラス）
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
@@ -82,6 +82,10 @@ st.markdown("""
     .badge-2 { background-color: #C0C0C0; color: #1D2939; }
     .badge-3 { background-color: #D97706; color: #FFFFFF; }
     .badge-other { background-color: #E2E8F0; color: #475467; }
+
+    /* CVRハイライト用カラークラス */
+    .cvr-high { color: #12B76A !important; font-weight: 700; } /* 平均以上: 緑 */
+    .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 平均未満: 赤 */
 </style>
 """, unsafe_allow_html=True)
 
@@ -192,7 +196,6 @@ try:
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
-    # 1番目：配信企業数
     with col1:
         st.markdown(f"""
         <div class="kpi-card">
@@ -202,7 +205,6 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # 2番目：クローズ対象企業数（「1日程：XX社・2日程：XX社」表記に修正）
     with col2:
         st.markdown(f"""
         <div class="kpi-card">
@@ -212,7 +214,6 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # 3番目：総送付数
     with col3:
         st.markdown(f"""
         <div class="kpi-card">
@@ -222,7 +223,6 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # 4番目：総エントリー数
     with col4:
         st.markdown(f"""
         <div class="kpi-card">
@@ -232,7 +232,6 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # 5番目：平均エントリー率
     with col5:
         st.markdown(f"""
         <div class="kpi-card">
@@ -265,7 +264,7 @@ try:
     else:
         st.warning("選択した期間に該当するデータがありません。")
 
-    # 7. 丸数字バッジ表示
+    # 7. 丸数字バッジ＆CVR動的カラー分け対応テーブル表示
     st.subheader("企業別データ一覧 (CVRが高い順)")
     
     rows_html = ""
@@ -279,6 +278,13 @@ try:
             badge_cls = "badge-3"
         else:
             badge_cls = "badge-other"
+        
+        # 平均エントリー率（全体平均）と比較して色判定
+        company_cvr = row['CVR (%)']
+        if company_cvr >= entry_rate:
+            cvr_color_cls = "cvr-high" # 平均以上：緑色 (#12B76A)
+        else:
+            cvr_color_cls = "cvr-low"  # 平均未満：赤色 (#F04438)
             
         rows_html += f"""
         <tr>
@@ -286,7 +292,7 @@ try:
             <td>{row['企業取引先名']}</td>
             <td style="text-align: right;">{int(row['送信数']):,}</td>
             <td style="text-align: right;">{int(row['エントリー数']):,}</td>
-            <td style="text-align: right; font-weight: 700;">{row['CVR (%)']:.2f}%</td>
+            <td style="text-align: right;" class="{cvr_color_cls}">{company_cvr:.2f}%</td>
         </tr>
         """
 
