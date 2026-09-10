@@ -40,7 +40,7 @@ st.markdown("""
         font-weight: 400;
     }
 
-    /* 画像デザインの完全再現テーブル */
+    /* テーブルデザイン */
     .custom-table {
         width: 100%;
         border-collapse: collapse;
@@ -67,7 +67,7 @@ st.markdown("""
         vertical-align: middle;
     }
     
-    /* 画像と全く同じ丸数字バッジ */
+    /* 丸数字バッジ */
     .badge {
         display: inline-flex;
         align-items: center;
@@ -78,10 +78,10 @@ st.markdown("""
         font-weight: 700;
         font-size: 13px;
     }
-    .badge-1 { background-color: #FFD000; color: #1D2939; } /* 1位: イエロー */
-    .badge-2 { background-color: #C0C0C0; color: #1D2939; } /* 2位: シルバー */
-    .badge-3 { background-color: #D97706; color: #FFFFFF; } /* 3位: ブロンズ */
-    .badge-other { background-color: #E2E8F0; color: #475467; } /* 4位〜: ライトグレー */
+    .badge-1 { background-color: #FFD000; color: #1D2939; }
+    .badge-2 { background-color: #C0C0C0; color: #1D2939; }
+    .badge-3 { background-color: #D97706; color: #FFFFFF; }
+    .badge-other { background-color: #E2E8F0; color: #475467; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,16 +99,45 @@ try:
 
     ng_pattern = "企業取引先名|送信数|エントリー数|cvr|CVR|累計|目標|実績|当日|合計|達成率|オファー|nan|None"
 
-    # 1. 配信企業数
+    # ==========================================
+    # 1. スプレッドシート①からの集計（配信企業数＆「1」「2」内訳）
+    # ==========================================
     raw_1 = pd.read_csv(sheet_url_1, header=None)
-    e_column_data = raw_1[4].astype(str).str.strip()
-    clean_e_names = e_column_data[
-        (~e_column_data.str.contains(ng_pattern, case=False, na=False)) & 
-        (e_column_data != "")
-    ]
-    delivered_company_count = clean_e_names.nunique()
 
+    count_1 = 0
+    count_2 = 0
+    delivered_company_count = 0
+
+    if raw_1.shape[1] > 18:
+        r_series = raw_1[17].astype(str).str.upper().str.strip()
+        s_series = clean_num(raw_1[18])
+
+        is_true = r_series.isin(["TRUE", "1", "可", "配信可", "1.0"])
+
+        delivered_company_count = int((is_true & (s_series >= 1)).sum())
+        count_1 = int((is_true & (s_series == 1)).sum())
+        count_2 = int((is_true & (s_series == 2)).sum())
+    else:
+        is_true_mask = pd.Series([False] * len(raw_1))
+        s_vals = pd.Series([0] * len(raw_1))
+
+        for col in raw_1.columns:
+            str_col = raw_1[col].astype(str).str.upper().str.strip()
+            if str_col.isin(["TRUE", "FALSE"]).any():
+                is_true_mask = str_col.isin(["TRUE", "1", "可"])
+                if col + 1 in raw_1.columns:
+                    s_vals = clean_num(raw_1[col + 1])
+                break
+
+        delivered_company_count = int((is_true_mask & (s_vals >= 1)).sum())
+        count_1 = int((is_true_mask & (s_vals == 1)).sum())
+        count_2 = int((is_true_mask & (s_vals == 2)).sum())
+
+    sum_1_2 = count_1 + count_2
+
+    # ==========================================
     # 2. スカウト集計
+    # ==========================================
     raw_2 = pd.read_csv(sheet_url_2, header=None)
     work_df_2 = pd.DataFrame({
         "企業取引先名": raw_2[0].astype(str).str.strip(),
@@ -168,7 +197,7 @@ try:
         <div class="kpi-card">
             <div class="kpi-title">配信企業数</div>
             <div class="kpi-value">{delivered_company_count:,}</div>
-            <div class="kpi-sub">社</div>
+            <div class="kpi-sub">対象企業</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -199,12 +228,13 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
+    # 一番右の枠：1・2 の合計と内訳を表示
     with col5:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title">分析対象 企業数</div>
-            <div class="kpi-value">{len(df_final)}</div>
-            <div class="kpi-sub">対象企業</div>
+            <div class="kpi-title">1・2 配信枠数</div>
+            <div class="kpi-value">{sum_1_2:,}</div>
+            <div class="kpi-sub">1: {count_1}社 / 2: {count_2}社</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -231,7 +261,7 @@ try:
     else:
         st.warning("選択した期間に該当するデータがありません。")
 
-    # 7. HTMLレンダリング専用機能 (st.html) を使用した丸数字バッジ表示
+    # 7. 丸数字バッジ表示
     st.subheader("企業別データ一覧 (CVRが高い順)")
     
     rows_html = ""
@@ -273,7 +303,6 @@ try:
     </table>
     """
     
-    # st.html() で文字化けせず確実にHTMLを描画
     st.html(full_table_html)
 
 except Exception as e:
