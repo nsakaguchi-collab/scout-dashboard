@@ -87,7 +87,7 @@ st.markdown("""
     .cvr-high { color: #12B76A !important; font-weight: 700; }
     .cvr-low { color: #F04438 !important; font-weight: 700; }
     
-    /* 見出し隣のカウント表示 */
+    /* 見出し隣のカウント表示（グレー統一） */
     .cvr-summary-count {
         font-size: 12px;
         font-weight: 400;
@@ -109,14 +109,11 @@ def clean_num(s):
         errors="coerce"
     ).fillna(0)
 
-# ==========================================
-# 🚀 データの高速読み込み＆キャッシュ化機能（@st.cache_data）
-# ==========================================
-@st.cache_data(ttl=300)  # 5分間データをキャッシュして通信を高速化
+# 🚀 データの高速読み込み＆キャッシュ化機能
+@st.cache_data(ttl=300)
 def load_data():
     ng_pattern = "企業取引先名|送信数|エントリー数|cvr|CVR|累計|目標|実績|当日|合計|達成率|オファー|nan|None"
 
-    # 1. スプレッドシート①読み込み
     raw_1 = pd.read_csv(sheet_url_1, header=None)
     count_1 = 0
     count_2 = 0
@@ -145,7 +142,6 @@ def load_data():
 
     sum_1_2 = count_1 + count_2
 
-    # 2. スプレッドシート②読み込み
     raw_2 = pd.read_csv(sheet_url_2, header=None)
     work_df_2 = pd.DataFrame({
         "企業取引先名": raw_2[0].astype(str).str.strip(),
@@ -162,18 +158,15 @@ def load_data():
     return delivered_company_count, count_1, count_2, sum_1_2, filtered_df_2
 
 try:
-    # 高速読み込み呼び出し
     delivered_company_count, count_1, count_2, sum_1_2, filtered_df_2 = load_data()
 
     # 3. サイドバーフィルター設定
     st.sidebar.header("🔍 フィルター設定")
     
-    # 手動更新用ボタン（データが最新にならない時用）
     if st.sidebar.button("🔄 データを最新に更新"):
         st.cache_data.clear()
         st.rerun()
 
-    # 🔍 企業選択ドロップダウン（入力＋一覧から選べる爆速検索）
     all_companies = sorted(filtered_df_2["企業取引先名"].unique().tolist())
     selected_companies = st.sidebar.multiselect(
         "🔍 企業名で絞り込み（複数選択可）",
@@ -267,7 +260,7 @@ try:
 
     st.markdown("---")
 
-    # 🔍 企業名の超高速絞り込み（メモリ上でのフィルタリング）
+    # 企業名の絞り込み
     df_display = df_final.copy()
     if selected_companies:
         df_display = df_display[df_display["企業取引先名"].isin(selected_companies)].reset_index(drop=True)
@@ -297,11 +290,12 @@ try:
     green_count = int((df_display["CVR (%)"] >= entry_rate).sum())
     red_count = int((df_display["CVR (%)"] < entry_rate).sum())
 
+    # 均一なグレー表示に統一
     st.markdown(f"""
     <div style="display: flex; align-items: baseline; margin-bottom: 8px;">
         <h3 style="margin: 0; padding: 0;">企業別データ一覧 【CVRが高い順】</h3>
         <span class="cvr-summary-count">
-            平均以上：<span class="cvr-high">{green_count}</span>社・平均未満：<span class="cvr-low">{red_count}</span>社
+            平均以上：{green_count}社・平均未満：{red_count}社
         </span>
     </div>
     """, unsafe_allow_html=True)
