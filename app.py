@@ -87,12 +87,12 @@ st.markdown("""
     .cvr-high { color: #12B76A !important; font-weight: 700; } /* 数字のみ緑 */
     .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 数字のみ赤 */
     
-    /* 見出し隣のカウント表示（文字は黒色） */
+    /* 見出し隣のカウント表示（カード下と同じ控えめな薄グレー） */
     .cvr-summary-count {
-        font-size: 14px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 400;
         margin-left: 12px;
-        color: #101828;
+        color: #98A2B3;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -276,7 +276,7 @@ try:
     green_count = int((df_final["CVR (%)"] >= entry_rate).sum())
     red_count = int((df_final["CVR (%)"] < entry_rate).sum())
 
-    # 数字のみを緑・赤色にし、テキスト部分は黒色に指定
+    # テキスト部分を画像の補足テキストと同じ薄グレーに設定
     st.markdown(f"""
     <div style="display: flex; align-items: baseline; margin-bottom: 8px;">
         <h3 style="margin: 0; padding: 0;">企業別データ一覧 【CVRが高い順】</h3>
