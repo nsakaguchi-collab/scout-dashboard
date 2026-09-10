@@ -185,7 +185,7 @@ try:
     df_grouped["CVR (%)"] = (df_grouped["エントリー数"] / df_grouped["送信数"] * 100).round(2)
     df_final = df_grouped.sort_values(by="CVR (%)", ascending=False).reset_index(drop=True)
 
-    # 5. KPI表示（並び順：配信企業数 ➔ クローズ対象企業数 ➔ 総送付数 ➔ 総エントリー数 ➔ 平均エントリー率）
+    # 5. KPI表示
     total_scout = int(df_final["送信数"].sum())
     total_entry = int(df_final["エントリー数"].sum())
     entry_rate = (total_entry / total_scout * 100) if total_scout > 0 else 0
@@ -202,13 +202,13 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    # 2番目：クローズ対象企業数（タイトルを変更しました）
+    # 2番目：クローズ対象企業数（「1日程：XX社・2日程：XX社」表記に修正）
     with col2:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">クローズ対象企業数</div>
             <div class="kpi-value">{sum_1_2:,}</div>
-            <div class="kpi-sub">1: {count_1}社 / 2: {count_2}社</div>
+            <div class="kpi-sub">1日程：{count_1}社・2日程：{count_2}社</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -266,7 +266,7 @@ try:
         st.warning("選択した期間に該当するデータがありません。")
 
     # 7. 丸数字バッジ表示
-    st.subheader("企業別データ一覧 【CVRが高い順】")
+    st.subheader("企業別データ一覧 (CVRが高い順)")
     
     rows_html = ""
     for idx, row in df_final.iterrows():
