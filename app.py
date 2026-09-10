@@ -86,6 +86,13 @@ st.markdown("""
     /* CVRハイライト用カラークラス */
     .cvr-high { color: #12B76A !important; font-weight: 700; } /* 平均以上: 緑 */
     .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 平均未満: 赤 */
+    
+    /* 見出し隣のカウント表示スタイル */
+    .cvr-summary-count {
+        font-size: 15px;
+        font-weight: 700;
+        margin-left: 12px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -265,7 +272,18 @@ try:
         st.warning("選択した期間に該当するデータがありません。")
 
     # 7. 丸数字バッジ＆CVR動的カラー分け対応テーブル表示
-    st.subheader("企業別データ一覧 【CVRが高い順】")
+    # 緑（平均以上）と赤（平均未満）の件数を事前算出
+    green_count = int((df_final["CVR (%)"] >= entry_rate).sum())
+    red_count = int((df_final["CVR (%)"] < entry_rate).sum())
+
+    st.markdown(f"""
+    <div style="display: flex; align-items: baseline; margin-bottom: 8px;">
+        <h3 style="margin: 0; padding: 0;">企業別データ一覧 【CVRが高い順】</h3>
+        <span class="cvr-summary-count">
+            <span class="cvr-high">{green_count}社</span>：<span class="cvr-low">{red_count}社</span>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
     
     rows_html = ""
     for idx, row in df_final.iterrows():
