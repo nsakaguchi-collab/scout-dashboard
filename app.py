@@ -84,14 +84,15 @@ st.markdown("""
     .badge-other { background-color: #E2E8F0; color: #475467; }
 
     /* CVRハイライト用カラークラス */
-    .cvr-high { color: #12B76A !important; font-weight: 700; } /* 平均以上: 緑 */
-    .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 平均未満: 赤 */
+    .cvr-high { color: #12B76A !important; font-weight: 700; } /* 数字のみ緑 */
+    .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 数字のみ赤 */
     
-    /* 見出し隣のカウント表示スタイル */
+    /* 見出し隣のカウント表示（文字は黒色） */
     .cvr-summary-count {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 700;
         margin-left: 12px;
+        color: #101828;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -272,15 +273,15 @@ try:
         st.warning("選択した期間に該当するデータがありません。")
 
     # 7. 丸数字バッジ＆CVR動的カラー分け対応テーブル表示
-    # 緑（平均以上）と赤（平均未満）の件数を事前算出
     green_count = int((df_final["CVR (%)"] >= entry_rate).sum())
     red_count = int((df_final["CVR (%)"] < entry_rate).sum())
 
+    # 数字のみを緑・赤色にし、テキスト部分は黒色に指定
     st.markdown(f"""
     <div style="display: flex; align-items: baseline; margin-bottom: 8px;">
         <h3 style="margin: 0; padding: 0;">企業別データ一覧 【CVRが高い順】</h3>
         <span class="cvr-summary-count">
-            <span class="cvr-high">{green_count}社</span>：<span class="cvr-low">{red_count}社</span>
+            平均以上：<span class="cvr-high">{green_count}</span>社・平均未満：<span class="cvr-low">{red_count}</span>社
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -297,12 +298,11 @@ try:
         else:
             badge_cls = "badge-other"
         
-        # 平均エントリー率（全体平均）と比較して色判定
         company_cvr = row['CVR (%)']
         if company_cvr >= entry_rate:
-            cvr_color_cls = "cvr-high" # 平均以上：緑色 (#12B76A)
+            cvr_color_cls = "cvr-high"
         else:
-            cvr_color_cls = "cvr-low"  # 平均未満：赤色 (#F04438)
+            cvr_color_cls = "cvr-low"
             
         rows_html += f"""
         <tr>
