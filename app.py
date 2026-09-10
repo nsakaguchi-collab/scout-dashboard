@@ -185,13 +185,14 @@ try:
     df_grouped["CVR (%)"] = (df_grouped["エントリー数"] / df_grouped["送信数"] * 100).round(2)
     df_final = df_grouped.sort_values(by="CVR (%)", ascending=False).reset_index(drop=True)
 
-    # 5. KPI表示
+    # 5. KPI表示（並び順：配信企業数 ➔ クローズ可能性企業 ➔ 総送付数 ➔ 総エントリー数 ➔ 平均エントリー率）
     total_scout = int(df_final["送信数"].sum())
     total_entry = int(df_final["エントリー数"].sum())
     entry_rate = (total_entry / total_scout * 100) if total_scout > 0 else 0
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
+    # 1番目：配信企業数
     with col1:
         st.markdown(f"""
         <div class="kpi-card">
@@ -201,7 +202,18 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
+    # 2番目：クローズ可能性企業
     with col2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title">1・2 配信枠数</div>
+            <div class="kpi-value">{sum_1_2:,}</div>
+            <div class="kpi-sub">1: {count_1}社 / 2: {count_2}社</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 3番目：総送付数
+    with col3:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">総送付数</div>
@@ -210,7 +222,8 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    with col3:
+    # 4番目：総エントリー数
+    with col4:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">総エントリー数</div>
@@ -219,22 +232,13 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-    with col4:
+    # 5番目：平均エントリー率
+    with col5:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-title">平均エントリー率</div>
             <div class="kpi-value">{entry_rate:.2f}%</div>
             <div class="kpi-sub">全体平均</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # 一番右の枠：1・2 の合計と内訳を表示
-    with col5:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title">1・2 配信枠数</div>
-            <div class="kpi-value">{sum_1_2:,}</div>
-            <div class="kpi-sub">1: {count_1}社 / 2: {count_2}社</div>
         </div>
         """, unsafe_allow_html=True)
 
