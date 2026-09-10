@@ -266,7 +266,7 @@ try:
         st.warning("選択した期間に該当するデータがありません。")
 
     # 7. 丸数字バッジ表示
-    st.subheader("企業別データ一覧 (CVRが高い順)")
+    st.subheader("企業別データ一覧 【CVRが高い順】")
     
     rows_html = ""
     for idx, row in df_final.iterrows():
