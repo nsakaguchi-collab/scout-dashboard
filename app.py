@@ -84,10 +84,10 @@ st.markdown("""
     .badge-other { background-color: #E2E8F0; color: #475467; }
 
     /* CVRハイライト用カラークラス */
-    .cvr-high { color: #12B76A !important; font-weight: 700; } /* 数字のみ緑 */
-    .cvr-low { color: #F04438 !important; font-weight: 700; }  /* 数字のみ赤 */
+    .cvr-high { color: #12B76A !important; font-weight: 700; }
+    .cvr-low { color: #F04438 !important; font-weight: 700; }
     
-    /* 見出し隣のカウント表示（カード下と同じ控えめな薄グレー） */
+    /* 見出し隣のカウント表示 */
     .cvr-summary-count {
         font-size: 12px;
         font-weight: 400;
@@ -112,7 +112,7 @@ try:
     ng_pattern = "企業取引先名|送信数|エントリー数|cvr|CVR|累計|目標|実績|当日|合計|達成率|オファー|nan|None"
 
     # ==========================================
-    # 1. スプレッドシート①からの集計（配信企業数＆「1」「2」内訳）
+    # 1. スプレッドシート①からの集計
     # ==========================================
     raw_1 = pd.read_csv(sheet_url_1, header=None)
 
@@ -163,8 +163,12 @@ try:
         (work_df_2["企業取引先名"] != "")
     ].copy()
 
-    # 3. 期間フィルター
-    st.sidebar.header("📅 期間フィルター")
+    # 3. フィルター機能（サイドバー）
+    st.sidebar.header("🔍 フィルター設定")
+    
+    # 🔍 企業名検索窓を追加
+    search_query = st.sidebar.text_input("🔍 企業名で検索", placeholder="例: ヤプリ、KSK...")
+
     valid_dates = filtered_df_2["送信予定日"].dropna()
 
     if not valid_dates.empty:
@@ -251,11 +255,16 @@ try:
 
     st.markdown("---")
 
+    # 🔍 検索クエリによるデータ絞り込み処理
+    df_display = df_final.copy()
+    if search_query:
+        df_display = df_display[df_display["企業取引先名"].str.contains(search_query, case=False, na=False)].reset_index(drop=True)
+
     # 6. グラフ表示
     st.subheader("企業別 CVRランキング")
-    if not df_final.empty:
+    if not df_display.empty:
         fig = px.bar(
-            df_final,
+            df_display,
             x="CVR (%)",
             y="企業取引先名",
             orientation="h",
@@ -266,17 +275,16 @@ try:
         fig.update_layout(
             font=dict(family="Noto Sans JP, sans-serif"),
             yaxis={"categoryorder": "total ascending"},
-            height=max(400, len(df_final) * 35)
+            height=max(400, len(df_display) * 35)
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.warning("選択した期間に該当するデータがありません。")
+        st.warning("該当する企業が見つかりませんでした。")
 
     # 7. 丸数字バッジ＆CVR動的カラー分け対応テーブル表示
-    green_count = int((df_final["CVR (%)"] >= entry_rate).sum())
-    red_count = int((df_final["CVR (%)"] < entry_rate).sum())
+    green_count = int((df_display["CVR (%)"] >= entry_rate).sum())
+    red_count = int((df_display["CVR (%)"] < entry_rate).sum())
 
-    # テキスト部分を画像の補足テキストと同じ薄グレーに設定
     st.markdown(f"""
     <div style="display: flex; align-items: baseline; margin-bottom: 8px;">
         <h3 style="margin: 0; padding: 0;">企業別データ一覧 【CVRが高い順】</h3>
@@ -286,52 +294,57 @@ try:
     </div>
     """, unsafe_allow_html=True)
     
-    rows_html = ""
-    for idx, row in df_final.iterrows():
-        rank = idx + 1
-        if rank == 1:
-            badge_cls = "badge-1"
-        elif rank == 2:
-            badge_cls = "badge-2"
-        elif rank == 3:
-            badge_cls = "badge-3"
-        else:
-            badge_cls = "badge-other"
-        
-        company_cvr = row['CVR (%)']
-        if company_cvr >= entry_rate:
-            cvr_color_cls = "cvr-high"
-        else:
-            cvr_color_cls = "cvr-low"
+    if not df_display.empty:
+        rows_html = ""
+        for idx, row in df_display.iterrows():
+            # 元のdf_finalでの順位（インデックス）を取得して本来の順位バッジを表示
+            original_rank = df_final[df_final["企業取引先名"] == row["企業取引先名"]].index[0] + 1
             
-        rows_html += f"""
-        <tr>
-            <td style="text-align: center; width: 80px;"><span class="badge {badge_cls}">{rank}</span></td>
-            <td>{row['企業取引先名']}</td>
-            <td style="text-align: right;">{int(row['送信数']):,}</td>
-            <td style="text-align: right;">{int(row['エントリー数']):,}</td>
-            <td style="text-align: right;" class="{cvr_color_cls}">{company_cvr:.2f}%</td>
-        </tr>
-        """
-
-    full_table_html = f"""
-    <table class="custom-table">
-        <thead>
+            if original_rank == 1:
+                badge_cls = "badge-1"
+            elif original_rank == 2:
+                badge_cls = "badge-2"
+            elif original_rank == 3:
+                badge_cls = "badge-3"
+            else:
+                badge_cls = "badge-other"
+            
+            company_cvr = row['CVR (%)']
+            if company_cvr >= entry_rate:
+                cvr_color_cls = "cvr-high"
+            else:
+                cvr_color_cls = "cvr-low"
+                
+            rows_html += f"""
             <tr>
-                <th style="width: 80px; text-align: center;">順位</th>
-                <th>企業取引先名</th>
-                <th style="text-align: right;">送信数</th>
-                <th style="text-align: right;">エントリー数</th>
-                <th style="text-align: right;">CVR (%)</th>
+                <td style="text-align: center; width: 80px;"><span class="badge {badge_cls}">{original_rank}</span></td>
+                <td>{row['企業取引先名']}</td>
+                <td style="text-align: right;">{int(row['送信数']):,}</td>
+                <td style="text-align: right;">{int(row['エントリー数']):,}</td>
+                <td style="text-align: right;" class="{cvr_color_cls}">{company_cvr:.2f}%</td>
             </tr>
-        </thead>
-        <tbody>
-            {rows_html}
-        </tbody>
-    </table>
-    """
-    
-    st.html(full_table_html)
+            """
+
+        full_table_html = f"""
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px; text-align: center;">順位</th>
+                    <th>企業取引先名</th>
+                    <th style="text-align: right;">送信数</th>
+                    <th style="text-align: right;">エントリー数</th>
+                    <th style="text-align: right;">CVR (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+        """
+        
+        st.html(full_table_html)
+    else:
+        st.info("検索条件に合致するデータがありません。")
 
 except Exception as e:
     st.error(f"読み込みエラーが発生しました: {e}")
