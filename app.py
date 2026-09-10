@@ -102,20 +102,22 @@ st.title("企業別 スカウトCVR分析ダッシュボード")
 sheet_url_1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTPfITrufiiyG9YiQcAARjSMjeMTHKDAfzcurgNOq8b3_FCbtM80NqhEBzT2Sd8sqv3d_a2PWxvZpoq/pub?gid=2141548826&single=true&output=csv"
 sheet_url_2 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWice_bz5atOTDo_RUl5xQxsLT5FS8urptp-yG_WwWPNkCbstkDGtrqdRtv6MolH_V2sjdP_RR7dtA/pub?gid=196825834&single=true&output=csv"
 
-try:
-    def clean_num(s):
-        return pd.to_numeric(
-            s.astype(str).str.replace(",", "").str.replace("%", "").str.strip(), 
-            errors="coerce"
-        ).fillna(0)
+# 数値クリーンアップ用補助関数
+def clean_num(s):
+    return pd.to_numeric(
+        s.astype(str).str.replace(",", "").str.replace("%", "").str.strip(), 
+        errors="coerce"
+    ).fillna(0)
 
+# ==========================================
+# 🚀 データの高速読み込み＆キャッシュ化機能（@st.cache_data）
+# ==========================================
+@st.cache_data(ttl=300)  # 5分間データをキャッシュして通信を高速化
+def load_data():
     ng_pattern = "企業取引先名|送信数|エントリー数|cvr|CVR|累計|目標|実績|当日|合計|達成率|オファー|nan|None"
 
-    # ==========================================
-    # 1. スプレッドシート①からの集計
-    # ==========================================
+    # 1. スプレッドシート①読み込み
     raw_1 = pd.read_csv(sheet_url_1, header=None)
-
     count_1 = 0
     count_2 = 0
     delivered_company_count = 0
@@ -123,16 +125,13 @@ try:
     if raw_1.shape[1] > 18:
         r_series = raw_1[17].astype(str).str.upper().str.strip()
         s_series = clean_num(raw_1[18])
-
         is_true = r_series.isin(["TRUE", "1", "可", "配信可", "1.0"])
-
         delivered_company_count = int((is_true & (s_series >= 1)).sum())
         count_1 = int((is_true & (s_series == 1)).sum())
         count_2 = int((is_true & (s_series == 2)).sum())
     else:
         is_true_mask = pd.Series([False] * len(raw_1))
         s_vals = pd.Series([0] * len(raw_1))
-
         for col in raw_1.columns:
             str_col = raw_1[col].astype(str).str.upper().str.strip()
             if str_col.isin(["TRUE", "FALSE"]).any():
@@ -140,16 +139,13 @@ try:
                 if col + 1 in raw_1.columns:
                     s_vals = clean_num(raw_1[col + 1])
                 break
-
         delivered_company_count = int((is_true_mask & (s_vals >= 1)).sum())
         count_1 = int((is_true_mask & (s_vals == 1)).sum())
         count_2 = int((is_true_mask & (s_vals == 2)).sum())
 
     sum_1_2 = count_1 + count_2
 
-    # ==========================================
-    # 2. スカウト集計
-    # ==========================================
+    # 2. スプレッドシート②読み込み
     raw_2 = pd.read_csv(sheet_url_2, header=None)
     work_df_2 = pd.DataFrame({
         "企業取引先名": raw_2[0].astype(str).str.strip(),
@@ -163,11 +159,27 @@ try:
         (work_df_2["企業取引先名"] != "")
     ].copy()
 
-    # 3. フィルター機能（サイドバー）
+    return delivered_company_count, count_1, count_2, sum_1_2, filtered_df_2
+
+try:
+    # 高速読み込み呼び出し
+    delivered_company_count, count_1, count_2, sum_1_2, filtered_df_2 = load_data()
+
+    # 3. サイドバーフィルター設定
     st.sidebar.header("🔍 フィルター設定")
     
-    # 🔍 企業名検索窓を追加
-    search_query = st.sidebar.text_input("🔍 企業名で検索", placeholder="例: ヤプリ、KSK...")
+    # 手動更新用ボタン（データが最新にならない時用）
+    if st.sidebar.button("🔄 データを最新に更新"):
+        st.cache_data.clear()
+        st.rerun()
+
+    # 🔍 企業選択ドロップダウン（入力＋一覧から選べる爆速検索）
+    all_companies = sorted(filtered_df_2["企業取引先名"].unique().tolist())
+    selected_companies = st.sidebar.multiselect(
+        "🔍 企業名で絞り込み（複数選択可）",
+        options=all_companies,
+        placeholder="企業名を入力または選択..."
+    )
 
     valid_dates = filtered_df_2["送信予定日"].dropna()
 
@@ -255,10 +267,10 @@ try:
 
     st.markdown("---")
 
-    # 🔍 検索クエリによるデータ絞り込み処理
+    # 🔍 企業名の超高速絞り込み（メモリ上でのフィルタリング）
     df_display = df_final.copy()
-    if search_query:
-        df_display = df_display[df_display["企業取引先名"].str.contains(search_query, case=False, na=False)].reset_index(drop=True)
+    if selected_companies:
+        df_display = df_display[df_display["企業取引先名"].isin(selected_companies)].reset_index(drop=True)
 
     # 6. グラフ表示
     st.subheader("企業別 CVRランキング")
@@ -297,7 +309,6 @@ try:
     if not df_display.empty:
         rows_html = ""
         for idx, row in df_display.iterrows():
-            # 元のdf_finalでの順位（インデックス）を取得して本来の順位バッジを表示
             original_rank = df_final[df_final["企業取引先名"] == row["企業取引先名"]].index[0] + 1
             
             if original_rank == 1:
